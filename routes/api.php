@@ -39,3 +39,10 @@ Route::middleware('auth:sanctum')->group(function () {
         'api_key' => env('CLOUDINARY_API_KEY'),
     ]);
 });
+Route::get('/debug-db', function () {
+    return [
+        'host' => env('DB_HOST'),
+        'database' => env('DB_DATABASE'),
+        'user' => env('DB_USERNAME'),
+    ];
+});
