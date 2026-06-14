@@ -14,7 +14,7 @@ class ProductController extends Controller
      */
     public function index()
     {
-        $products = Product::all();
+      $products = Product::with('category')->get();
 return response()->json([
 'data' => $products,
 'message' => 'Products retrieved successfully',
@@ -61,9 +61,10 @@ public function store(Request $request)
 
         $imageUrl = $uploaded['secure_url'];
     }
-$category = \App\Models\Category::firstOrCreate([
-    'name' => $validated['category_name']
-]);
+$category = \App\Models\Category::firstOrCreate(
+    ['name' => $validated['category_name']],
+    ['slug' => \Illuminate\Support\Str::slug($validated['category_name'])]
+);
     $product = Product::create([
         'name' => $validated['name'],
         'slug' => Str::slug($validated['name']) . '-' . time(),
@@ -101,33 +102,53 @@ $category = \App\Models\Category::firstOrCreate([
      * Update the specified resource in storage.
      */
     public function update(Request $request, Product $product)
-    
-    {
-$validated = $request->validate([
-        'name'=>'sometimes|string|max:255',
-        'slug' => 'sometimes|string|max:255|unique:products,slug,' . $product->id,
-        'description'=>'sometimes|string',
-        'price'=>'sometimes|numeric',
-        'stock'=>'sometimes|integer',
-        'image'=>'sometimes|string|max:255',
-        'category_name'=>'sometimes|string|max:255',
-        'is_active'=>'sometimes|boolean'
-]);
-if ($request->has('category_name')) {
-    $category = \App\Models\Category::firstOrCreate([
-        'name' => $request->category_name
+{
+    $validated = $request->validate([
+        'name'          => 'sometimes|string|max:255',
+        'slug'          => 'sometimes|string|max:255|unique:products,slug,' . $product->id,
+        'description'   => 'sometimes|nullable|string',
+        'price'         => 'sometimes|numeric',
+        'stock'         => 'sometimes|integer',
+        'image'         => 'sometimes|nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+        'category_name' => 'sometimes|string|max:255',
+        'category_id'   => 'sometimes|exists:categories,id',
+        'is_active'     => 'sometimes|boolean',
     ]);
 
-    $validated['category_id'] = $category->id;
-}
-        $product->update($validated);
+    // Upload nouvelle image sur Cloudinary si fournie
+    if ($request->hasFile('image')) {
+        $cloudinary = new Cloudinary([
+            'cloud' => [
+                'cloud_name' => env('CLOUDINARY_CLOUD_NAME'),
+                'api_key'    => env('CLOUDINARY_API_KEY'),
+                'api_secret' => env('CLOUDINARY_API_SECRET'),
+            ],
+        ]);
 
-        return response()->json([
-            'data'    => $product->fresh(),
-            'message' => 'Product updated successfully',
-        ], 200);
+        $uploaded = $cloudinary->uploadApi()->upload(
+            $request->file('image')->getRealPath(),
+            ['folder' => 'partiva/products']
+        );
+
+        $validated['image'] = $uploaded['secure_url'];
     }
-    
+
+    if ($request->has('category_name')) {
+        $category = \App\Models\Category::firstOrCreate(
+            ['name' => $request->category_name],
+            ['slug' => \Illuminate\Support\Str::slug($request->category_name)]
+        );
+        $validated['category_id'] = $category->id;
+    }
+
+    unset($validated['category_name']);
+    $product->update($validated);
+
+    return response()->json([
+        'data'    => $product->fresh(),
+        'message' => 'Product updated successfully',
+    ], 200);
+}
 
     /**
      * Remove the specified resource from storage.
