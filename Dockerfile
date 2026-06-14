@@ -35,13 +35,8 @@ RUN composer install --no-dev --optimize-autoloader --no-interaction
 # Laravel permissions (important on Railway)
 RUN chmod -R 775 storage bootstrap/cache
 
-# Optimize Laravel (safe for production)
-RUN php artisan config:clear && \
-    php artisan cache:clear && \
-    php artisan config:cache
-
 # Expose port (Railway uses PORT env)
 EXPOSE 8080
 
-# Start server + run migrations safely
-CMD ["sh", "-c", "php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=${PORT:-8080}"]
+# Cache config at runtime (env vars are available here), then run migrations, then start server
+CMD ["sh", "-c", "php artisan config:cache && php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=${PORT:-8080}"]
