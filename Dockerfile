@@ -39,4 +39,4 @@ RUN chmod -R 775 storage bootstrap/cache
 EXPOSE 8080
 
 # Cache config at runtime (env vars are available here), then run migrations, then start server
-CMD ["sh", "-c", "php artisan config:cache && php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=${PORT:-8080}"]
+CMD ["sh", "-c", "echo '>>> CONFIG CACHE' && php artisan config:cache && echo '>>> RUNNING MIGRATIONS' && php artisan migrate --force && echo '>>> MIGRATIONS DONE' && echo '>>> STARTING SERVER' && php artisan serve --host=0.0.0.0 --port=${PORT:-8080}"]
